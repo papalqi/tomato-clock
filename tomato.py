@@ -14,7 +14,7 @@
 import sys
 import time
 import subprocess
-
+from plyer import notification
 WORK_MINUTES = 25
 BREAK_MINUTES = 5
 
@@ -101,7 +101,12 @@ def notify_me(msg):
             subprocess.Popen(["notify-send", '🍅', msg])
         else:
             # windows?
-            # TODO: windows notification
+            notification.notify(
+                title='🍅',
+                message=msg,
+                app_name='My Application',
+                timeout=10
+            )
             pass
 
     except:
