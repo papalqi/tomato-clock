@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
+import msvcrt
 # Pomodoro 番茄工作法 https://en.wikipedia.org/wiki/Pomodoro_Technique
 # ====== 🍅 Tomato Clock =======
 # ./tomato.py         # start a 25 minutes tomato clock + 5 minutes break
@@ -14,6 +14,8 @@
 import sys
 import time
 import subprocess
+
+import keyboard as keyboard
 from plyer import notification
 WORK_MINUTES = 25
 BREAK_MINUTES = 5
@@ -21,27 +23,28 @@ BREAK_MINUTES = 5
 
 def main():
     try:
-        if len(sys.argv) <= 1:
-            print(f'🍅 tomato {WORK_MINUTES} minutes. Ctrl+C to exit')
-            tomato(WORK_MINUTES, 'It is time to take a break')
-            print(f'🛀 break {BREAK_MINUTES} minutes. Ctrl+C to exit')
-            tomato(BREAK_MINUTES, 'It is time to work')
+        while True:
+            if len(sys.argv) <= 1:
+                print(f'🍅 tomato {WORK_MINUTES} minutes. Ctrl+C to exit')
+                tomato(WORK_MINUTES, 'It is time to take a break')
+                print(f'🛀 break {BREAK_MINUTES} minutes. Ctrl+C to exit')
+                tomato(BREAK_MINUTES, 'It is time to work')
 
-        elif sys.argv[1] == '-t':
-            minutes = int(sys.argv[2]) if len(sys.argv) > 2 else WORK_MINUTES
-            print(f'🍅 tomato {minutes} minutes. Ctrl+C to exit')
-            tomato(minutes, 'It is time to take a break')
+            elif sys.argv[1] == '-t':
+                minutes = int(sys.argv[2]) if len(sys.argv) > 2 else WORK_MINUTES
+                print(f'🍅 tomato {minutes} minutes. Ctrl+C to exit')
+                tomato(minutes, 'It is time to take a break')
 
-        elif sys.argv[1] == '-b':
-            minutes = int(sys.argv[2]) if len(sys.argv) > 2 else BREAK_MINUTES
-            print(f'🛀 break {minutes} minutes. Ctrl+C to exit')
-            tomato(minutes, 'It is time to work')
-
-        elif sys.argv[1] == '-h':
-            help()
-
-        else:
-            help()
+            elif sys.argv[1] == '-b':
+                minutes = int(sys.argv[2]) if len(sys.argv) > 2 else BREAK_MINUTES
+                print(f'🛀 break {minutes} minutes. Ctrl+C to exit')
+                tomato(minutes, 'It is time to work')
+            elif sys.argv[1] == '-h':
+                help()
+            else:
+                help()
+            if input('👍 continue? (y/n)') == 'n':
+                break
 
     except KeyboardInterrupt:
         print('\n👋 goodbye')
@@ -49,22 +52,63 @@ def main():
         print(ex)
         exit(1)
 
-
 def tomato(minutes, notify_msg):
     start_time = time.perf_counter()
+    paused = False
+    pause_time = 0
+    total_pause_time = 0
     while True:
-        diff_seconds = int(round(time.perf_counter() - start_time))
-        left_seconds = minutes * 60 - diff_seconds
-        if left_seconds <= 0:
-            print('')
+        key_pressed = None
+        if sys.platform.startswith('win'):
+            if msvcrt.kbhit():
+                key_pressed = msvcrt.getch().decode('utf-8')
+        else:
+            ready_to_read, _, _ = select.select([sys.stdin], [], [], 0)
+            if ready_to_read:
+                key_pressed = sys.stdin.read(1)
+
+        if key_pressed == 'p':
+            paused = True
+            pause_time = time.perf_counter()
+            print("\n暂停中... 按 'r' 继续")
+        elif key_pressed == 'r':
+            paused = False
+            print("继续中... 按 'p' 暂停")
+            total_pause_time += time.perf_counter() - pause_time
+        elif key_pressed == 'q':
             break
 
-        countdown = '{}:{} ⏰'.format(int(left_seconds / 60), int(left_seconds % 60))
-        duration = min(minutes, 25)
-        progressbar(diff_seconds, minutes * 60, duration, countdown)
-        time.sleep(1)
-
+        if not paused:
+            diff_seconds = int(round(time.perf_counter() - start_time - total_pause_time))
+            left_seconds = minutes * 60 - diff_seconds
+            if left_seconds <= 0:
+                print('')
+                break
+            countdown = '{}:{} ⏰'.format(int(left_seconds / 60), int(left_seconds % 60))
+            duration = min(minutes, 25)
+            progressbar(diff_seconds, minutes * 60, duration, countdown)
+            time.sleep(1)
+        else:
+            time.sleep(0.1)
     notify_me(notify_msg)
+# def tomato(minutes, notify_msg):
+#     start_time = time.perf_counter()
+#     # 清空输入缓存，光标新起一行
+#     sys.stdin.flush()
+#     sys.stdout.write('\r')
+#     sys.stdout.flush()
+#     while True:
+#         diff_seconds = int(round(time.perf_counter() - start_time))
+#         left_seconds = minutes * 60 - diff_seconds
+#         if left_seconds <= 0:
+#             print('')
+#             break
+#         countdown = '{}:{} ⏰'.format(int(left_seconds / 60), int(left_seconds % 60))
+#         duration = min(minutes, 25)
+#         progressbar(diff_seconds, minutes * 60, duration, countdown)
+#         time.sleep(1)
+#         check_input()
+#     notify_me(notify_msg)
 
 
 def progressbar(curr, total, duration=10, extra=''):
