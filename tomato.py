@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import msvcrt
+import os
+import subprocess
+import sys
+import time
+from datetime import datetime
+
+from plyer import notification
+
 # Pomodoro 番茄工作法 https://en.wikipedia.org/wiki/Pomodoro_Technique
 # ====== 🍅 Tomato Clock =======
 # ./tomato.py         # start a 25 minutes tomato clock + 5 minutes break
@@ -10,15 +18,9 @@ import msvcrt
 # ./tomato.py -b <n>  # take a <n> minutes break
 # ./tomato.py -h      # help
 
-
-import sys
-import time
-import subprocess
-
-import keyboard as keyboard
-from plyer import notification
 WORK_MINUTES = 25
 BREAK_MINUTES = 5
+LOG_FILE = "tomato_log.txt"
 
 
 def main():
@@ -46,17 +48,40 @@ def main():
             if input('👍 continue? (y/n)') == 'n':
                 break
 
+
     except KeyboardInterrupt:
         print('\n👋 goodbye')
     except Exception as ex:
         print(ex)
         exit(1)
 
+
+def update_log_file():
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    current_time = datetime.now().strftime("%H:%M:%S")
+    total_sessions = 0
+
+    if os.path.exists(LOG_FILE):
+        with open(LOG_FILE, "r") as file:
+            lines = file.readlines()
+            for line in lines:
+                date, _ = line.strip().split(", ")
+                if date == current_date:
+                    total_sessions += 1
+
+    total_sessions += 1
+    with open(LOG_FILE, "a") as file:
+        file.write(f"{current_date}, {current_time}\n")
+
+    print(f"\n📝 Log updated: {current_date} {current_time} | Total sessions today: {total_sessions}")
+
+
 def tomato(minutes, notify_msg):
     start_time = time.perf_counter()
     paused = False
     pause_time = 0
     total_pause_time = 0
+    update_log_file()
     while True:
         key_pressed = None
         if sys.platform.startswith('win'):
@@ -91,24 +116,6 @@ def tomato(minutes, notify_msg):
         else:
             time.sleep(0.1)
     notify_me(notify_msg)
-# def tomato(minutes, notify_msg):
-#     start_time = time.perf_counter()
-#     # 清空输入缓存，光标新起一行
-#     sys.stdin.flush()
-#     sys.stdout.write('\r')
-#     sys.stdout.flush()
-#     while True:
-#         diff_seconds = int(round(time.perf_counter() - start_time))
-#         left_seconds = minutes * 60 - diff_seconds
-#         if left_seconds <= 0:
-#             print('')
-#             break
-#         countdown = '{}:{} ⏰'.format(int(left_seconds / 60), int(left_seconds % 60))
-#         duration = min(minutes, 25)
-#         progressbar(diff_seconds, minutes * 60, duration, countdown)
-#         time.sleep(1)
-#         check_input()
-#     notify_me(notify_msg)
 
 
 def progressbar(curr, total, duration=10, extra=''):
@@ -118,22 +125,6 @@ def progressbar(curr, total, duration=10, extra=''):
 
 
 def notify_me(msg):
-    '''
-    # macos desktop notification
-    terminal-notifier -> https://github.com/julienXX/terminal-notifier#download
-    terminal-notifier -message <msg>
-
-    # ubuntu desktop notification
-    notify-send
-
-    # voice notification
-    say -v <lang> <msg>
-    lang options:
-    - Daniel:       British English
-    - Ting-Ting:    Mandarin
-    - Sin-ji:       Cantonese
-    '''
-
     print(msg)
     try:
         if sys.platform == 'darwin':
